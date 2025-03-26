@@ -1,0 +1,1162 @@
+diff --git a/Kbuild b/Kbuild
+index f38caed..c6bcb6a 100644
+--- a/Kbuild
++++ b/Kbuild
+@@ -26,7 +26,7 @@ ifeq ($(KERNEL_SRC),)
+  ifeq ($(srctree),.)
+   BCMDHD_ROOT=$(src)
+  else
+-  BCMDHD_ROOT=$(srctree)/$(src)
++  BCMDHD_ROOT=$(src)
+  endif
+  $(warning : ** Regular in-tree build BCMDHD_ROOT=$(BCMDHD_ROOT)**)
+ else
+@@ -45,6 +45,7 @@ CONFIG_BCMDHD=m
+ CONFIG_BCMDHD_PCIE=y
+ CONFIG_BCM43752=
+ CONFIG_BCM4389=y
++CONFIG_SOC_GOOGLE=y
+ CONFIG_DHD_OF_SUPPORT=y
+ ifneq ($(CONFIG_SOC_GOOGLE),)
+  CONFIG_BCMDHD_FW_PATH="\"/vendor/firmware/fw_bcmdhd.bin\""
+@@ -91,7 +92,7 @@ DHDCFLAGS += -DCONFIG_BCMDHD_GET_OOB_STATE=$(CONFIG_BCMDHD_GET_OOB_STATE)
+ endif
+ 
+ DHDCFLAGS += -DBCMUTILS_ERR_CODES -DUSE_NEW_RSPEC_DEFS
+-DHDCFLAGS += -Wall -Werror -Wstrict-prototypes -Wno-parentheses-equality -Dlinux -DLINUX -DBCMDRIVER \
++DHDCFLAGS += -Wall -Wstrict-prototypes -Wno-parentheses-equality -Dlinux -DLINUX -DBCMDRIVER \
+ 	-DBCMDONGLEHOST -DBCMDMA32 -DBCMFILEIMAGE \
+ 	-DDHDTHREAD -DSHOW_EVENTS -DWLP2P \
+ 	-DWIFI_ACT_FRAME -DARP_OFFLOAD_SUPPORT \
+@@ -104,7 +105,7 @@ DHDCFLAGS += -Wall -Werror -Wstrict-prototypes -Wno-parentheses-equality -Dlinux
+ 	-DWL_P2P_USE_RANDMAC
+ 
+ DHDCFLAGS += -DOEM_ANDROID
+-DHDCFLAGS += -DDHD_COREDUMP
++#DHDCFLAGS += -DDHD_COREDUMP
+ 
+ #################
+ # Common feature
+@@ -291,6 +292,8 @@ ifneq ($(CONFIG_BCMDHD_PCIE),)
+ 	DHDCFLAGS += -DWBRC
+ endif
+ 
++DHDCFLAGS += -DWL_MLO_BKPORT_NEW_PORT_AUTH
++
+ ifneq ($(CONFIG_FIB_RULES),)
+ # Debugability
+ # HAL File dump is supported only for iptable builds(brcm_wlan_iptables_defconfig)
+@@ -557,7 +560,7 @@ ifeq ($(CONFIG_SOC_GS201),)
+ 	DHDCFLAGS += -DDHD_ALLOC_COHERENT_MEM_FROM_ATOMIC_POOL
+ endif
+ # Runtime PM feature
+-	DHDCFLAGS += -DDHD_PCIE_RUNTIMEPM -DMAX_IDLE_COUNT=5
++#	DHDCFLAGS += -DDHD_PCIE_RUNTIMEPM -DMAX_IDLE_COUNT=5
+ 
+ #AXI error logging
+ DHDCFLAGS += -DDNGL_AXI_ERROR_LOGGING
+@@ -912,24 +915,23 @@ ifeq ($(DRIVER_TYPE),m)
+ endif
+ 
+ DHDCFLAGS += -DDHD_CAP_CUSTOMER="\"hw2 \""
+-ifneq ($(CONFIG_SOC_GOOGLE),)
+-	# The flag will be enabled only on customer platform
+-	DHDCFLAGS += -DCUSTOMER_HW2_DEBUG
+-	DHDCFLAGS += -DDHD_SET_PCIE_DMA_MASK_FOR_GS101
+-	DHDCFLAGS += -DCUSTOM_CONTROL_LOGTRACE=1
+-	DHDCFLAGS += -DDHD_CAP_PLATFORM="\"exynos \""
+-	DHDCFLAGS += -DCONFIG_ARCH_EXYNOS
+-	DHDCFLAGS += -DDHD_MODULE_INIT_FORCE_SUCCESS
+-	DHDCFLAGS += -DSUPPORT_MULTIPLE_NVRAM -DSUPPORT_MULTIPLE_CLMBLOB
+-	DHDCFLAGS += -DDHD_LB_TXP_DEFAULT_ENAB
+-	DHDCFLAGS += -DDHD_SSSR_COREDUMP
+-	DHDCFLAGS += -DDHD_REDUCE_PM_LOG
+-	# LB RXP Flow control to avoid OOM
+-	DHDCFLAGS += -DLB_RXP_STOP_THR=500 -DLB_RXP_STRT_THR=499
+-	# Dongle init fail
+-	DHDCFLAGS += -DPOWERUP_MAX_RETRY=0
+-	# Explicitly disable Softap 6G
+-	DHDCFLAGS += -DWL_DISABLE_SOFTAP_6G
++# The flag will be enabled only on customer platform
++DHDCFLAGS += -DCUSTOMER_HW2_DEBUG
++DHDCFLAGS += -DDHD_SET_PCIE_DMA_MASK_FOR_GS101
++DHDCFLAGS += -DCUSTOM_CONTROL_LOGTRACE=1
++DHDCFLAGS += -DDHD_CAP_PLATFORM="\"exynos \""
++DHDCFLAGS += -DCONFIG_ARCH_EXYNOS
++DHDCFLAGS += -DDHD_MODULE_INIT_FORCE_SUCCESS
++DHDCFLAGS += -DSUPPORT_MULTIPLE_NVRAM -DSUPPORT_MULTIPLE_CLMBLOB
++DHDCFLAGS += -DDHD_LB_TXP_DEFAULT_ENAB
++DHDCFLAGS += -DDHD_SSSR_COREDUMP
++DHDCFLAGS += -DDHD_REDUCE_PM_LOG
++# LB RXP Flow control to avoid OOM
++DHDCFLAGS += -DLB_RXP_STOP_THR=500 -DLB_RXP_STRT_THR=499
++# Dongle init fail
++DHDCFLAGS += -DPOWERUP_MAX_RETRY=0
++# Explicitly disable Softap 6G
++DHDCFLAGS += -DWL_DISABLE_SOFTAP_6G
+ ifneq ($(filter y, $(CONFIG_BCM4389)),)
+ 	# Add chip specific suffix to the output on customer release
+ 	BCM_WLAN_CHIP_SUFFIX = 4389
+@@ -950,39 +952,13 @@ ifneq ($(CONFIG_BCMDHD_PCIE),)
+ 	DHDCFLAGS += -DDHD_CLM_NAME="\"bcmdhd_clm.blob\""
+ 	DHDCFLAGS += -DDHD_MAP_NAME="\"fw_bcmdhd.map\""
+ ifneq ($(CONFIG_SOC_GS201),)
+-	DHDCFLAGS += -DPCIE_CPL_TIMEOUT_RECOVERY
++		DHDCFLAGS += -DPCIE_CPL_TIMEOUT_RECOVERY
+ endif
+ endif
+-	# TCP TPUT Enhancement, enable only for GS101
+-	DHDCFLAGS += -DDHD_TCP_LIMIT_OUTPUT
+-	DHDCFLAGS += -DDHD_TCP_PACING_SHIFT
++# TCP TPUT Enhancement, enable only for GS101
++DHDCFLAGS += -DDHD_TCP_LIMIT_OUTPUT
++DHDCFLAGS += -DDHD_TCP_PACING_SHIFT
+ 
+-else ifneq ($(CONFIG_ARCH_HISI),)
+-	DHDCFLAGS += -DBOARD_HIKEY -DBOARD_HIKEY_HW2
+-	DHDCFLAGS += -DDHD_SUPPORT_VFS_CALL
+-	# Skip pktlogging of data packets
+-	DHDCFLAGS += -DDHD_SKIP_PKTLOGGING_FOR_DATA_PKTS
+-
+-	# Allow wl event forwarding as network packet
+-	DHDCFLAGS += -DWL_EVENT_ENAB
+-
+-	# Enable memdump for logset beyond range only internal builds
+-	DHDCFLAGS += -DDHD_LOGSET_BEYOND_MEMDUMP
+-
+-ifneq ($(CONFIG_BCMDHD_PCIE),)
+-	# LB RXP Flow control to avoid OOM
+-	DHDCFLAGS += -DLB_RXP_STOP_THR=200 -DLB_RXP_STRT_THR=199
+-	DHDCFLAGS += -DDHD_LINUX_STD_FW_API
+-	DHDCFLAGS += -DDHD_FW_NAME="\"fw_bcmdhd.bin\""
+-	DHDCFLAGS += -DDHD_NVRAM_NAME="\"bcmdhd.cal\""
+-	DHDCFLAGS += -DDHD_CLM_NAME="\"bcmdhd_clm.blob\""
+-	DHDCFLAGS += -DDHD_MAP_NAME="\"fw_bcmdhd.map\""
+-endif
+-	DHDCFLAGS += -DDHD_CAP_PLATFORM="\"hikey \""
+-	# Dongle init fail
+-	DHDCFLAGS += -DPOWERUP_MAX_RETRY=3
+-	DHDCFLAGS := $(filter-out -DSIMPLE_MAC_PRINT ,$(DHDCFLAGS))
+-endif
+ 
+ DHDCFLAGS += -DDHD_DEBUG
+ DHDCFLAGS += -DDHD_COMPILED=\"$(BCMDHD_ROOT)\"
+@@ -1024,11 +1000,7 @@ ifneq ($(filter -DDHD_STATUS_LOGGING,$(DHDCFLAGS)),)
+ 	DHDOFILES += dhd_statlog.o
+ endif
+ 
+-ifneq ($(filter y, $(CONFIG_SOC_GOOGLE) $(CONFIG_SOC_EXYNOS9820)),)
+-	DHDOFILES += dhd_custom_google.o
+-else ifneq ($(CONFIG_ARCH_HISI),)
+-	DHDOFILES += dhd_custom_hikey.o
+-endif
++DHDOFILES += dhd_custom_google.o
+ 
+ ifneq ($(CONFIG_BROADCOM_WIFI_RESERVED_MEM),)
+   DHDOFILES += dhd_custom_memprealloc.o
+diff --git a/Kconfig b/Kconfig
+index f1ad2d4..70099d2 100644
+--- a/Kconfig
++++ b/Kconfig
+@@ -21,7 +21,7 @@
+ 
+ config BCMDHD
+ 	tristate "Broadcom FullMAC wireless cards support"
+-	---help---
++	help
+ 	  This module adds support for wireless adapters based on
+ 	  Broadcom FullMAC chipset.
+ 
+@@ -90,34 +90,34 @@ config BCMDHD_FW_PATH
+ 	depends on BCMDHD
+ 	string "Firmware path"
+ 	default "/vendor/etc/wifi/fw_bcmdhd.bin"
+-	---help---
++	help
+ 	  Path to the firmware file.
+ 
+ config BCMDHD_NVRAM_PATH
+ 	depends on BCMDHD
+ 	string "NVRAM path"
+ 	default "/vendor/etc/wifi/bcmdhd.cal"
+-	---help---
++	help
+ 	  Path to the calibration file.
+ 
+ config BCMDHD_CLM_PATH
+ 	depends on BCMDHD
+ 	string "CLM path"
+ 	default "/vendor/etc/wifi/bcmdhd_clm.blob"
+-	---help---
++	help
+ 	  Path to the clm file.
+ 
+ config BCMDHD_MAP_PATH
+ 	depends on BCMDHD
+ 	string "MAP path"
+ 	default "/vendor/etc/wifi/fw_bcmdhd.map"
+-	---help---
++	help
+ 	  Path to the map file.
+ 
+ config BROADCOM_WIFI_RESERVED_MEM
+ 	bool "BROADCOM Reserved memory for wifi device"
+ 	depends on BCMDHD
+-	---help---
++	help
+ 	  This is a configuration for Broadcom WLAN driver.
+ 
+ config BCMDHD_WEXT
+@@ -132,28 +132,28 @@ config DHD_USE_STATIC_BUF
+ 	bool "Enable memory preallocation"
+ 	depends on BCMDHD
+ 	default n
+-	---help---
++	help
+ 	  Use memory preallocated in platform
+ 
+ config DHD_USE_SCHED_SCAN
+ 	bool "Use CFG80211 sched scan"
+ 	depends on BCMDHD && CFG80211
+ 	default n
+-	---help---
++	help
+ 	  Use CFG80211 sched scan
+ 
+ config DHD_SET_RANDOM_MAC_VAL
+ 	hex "Vendor OUI"
+ 	depends on BCMDHD
+ 	default 0x001A11
+-	---help---
++	help
+ 	  Set vendor OUI for SoftAP
+ 
+ config WLAN_REGION_CODE
+ 	int "---Region codes for Broadcom WiFi Driver"
+ 	depends on BCMDHD
+ 	default 100
+-	---help---
++	help
+ 		This is a region code for Broadcom Wi-Fi featured functions.
+ 		- 100 : EUR OPEN
+ 		- 101 : EUR ORG
+@@ -167,38 +167,38 @@ config WLAIBSS
+ 	bool "Advanced IBSS mode"
+ 	depends on (BCM4335 || BCM4339 || BCM4354 || BCM4358 || BCM4359 || BCM4361 || BCM4362)
+ 	default y
+-	---help---
++	help
+ 	  This is a configuration for Oxygen Network.
+ 
+ config WL_RELMCAST
+ 	bool "Reliable Multicast Support"
+ 	depends on (BCM4335 || BCM4339 || BCM4354 || BCM4358 || BCM4359 || BCM4361 || BCM4362)
+ 	default y
+-	---help---
++	help
+ 	  This is a configuration for RMC.
+ 
+ config WL_NAN
+ 	bool "NAN Feature"
+ 	depends on BCMDHD
+ 	default n
+-	---help---
++	help
+ 	  This is a configuration for NAN Feature.
+ 
+ config BCMDHD_PREALLOC_MEMDUMP
+ 	bool "BROADCOM PCIE specific memory reserved for MEMDUMP"
+ 	depends on BROADCOM_WIFI_RESERVED_MEM
+-	---help---
++	help
+ 	  Preallocated memory support for dongle memory dump
+ 
+ config BCMDHD_OOB_HOST_WAKE
+         bool "Use the external WLAN_HOST_WAKE pin"
+         depends on BCMDHD
+-        ---help---
++        help
+           Use the external GPIO pin to wake up host
+ 
+ config BCMDHD_GET_OOB_STATE
+         bool "Support WLAN_HOST_WAKE pin level information"
+         depends on BCMDHD_OOB_HOST_WAKE
+         default y
+-        ---help---
++        help
+           Support WLAN_HOST_WAKE pin level information
+diff --git a/Makefile b/Makefile
+index d354e14..bd82442 100644
+--- a/Makefile
++++ b/Makefile
+@@ -23,11 +23,11 @@
+ # Path to the module source
+ M ?= $(shell pwd)
+ 
+-ifneq ($(KERNEL_SRC),)
+- KBUILD_OPTIONS += BCMDHD_ROOT=$(shell cd $(KERNEL_SRC); readlink -e $(M))
+- -include $(KERNEL_SRC)/../private/google-modules/soc/gs/Makefile.include
+- EXTRA_CFLAGS+="-Wno-missing-prototypes"
+-endif
++#ifneq ($(KERNEL_SRC),)
++# KBUILD_OPTIONS += BCMDHD_ROOT=$(shell cd $(KERNEL_SRC); readlink -e $(M))
++# -include $(KERNEL_SRC)/../private/google-modules/soc/gs/Makefile.include
++# EXTRA_CFLAGS+="-Wno-missing-prototypes"
++#endif
+ EXTRA_CFLAGS += -fstrict-flex-arrays=0
+ 
+ ifneq ($(KERNEL_SRC),)
+diff --git a/bcmbloom.c b/bcmbloom.c
+index 028b901..a2144ea 100644
+--- a/bcmbloom.c
++++ b/bcmbloom.c
+@@ -24,15 +24,11 @@
+ #include <typedefs.h>
+ #include <bcmdefs.h>
+ 
+-#if defined(CONFIG_BCMDHD) && defined(__linux__)
+ #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))
+ #include <linux/stdarg.h>
+ #else
+ #include <stdarg.h>
+ #endif /* LINUX_VERSION_CODE */
+-#else
+-#include <stdarg.h>
+-#endif /* CONFIG_BCMDHD && __linux__ */
+ 
+ #ifdef BCMDRIVER
+ #include <osl.h>
+diff --git a/bcmutils.c b/bcmutils.c
+index 27d700b..e21b768 100644
+--- a/bcmutils.c
++++ b/bcmutils.c
+@@ -24,15 +24,11 @@
+ #include <typedefs.h>
+ #include <bcmdefs.h>
+ 
+-#if defined(CONFIG_BCMDHD) && defined(__linux__)
+ #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))
+ #include <linux/stdarg.h>
+ #else
+ #include <stdarg.h>
+ #endif /* LINUX_VERSION_CODE */
+-#else
+-#include <stdarg.h>
+-#endif /* CONFIG_BCMDHD && __linux__ */
+ 
+ #ifdef BCMDRIVER
+ #include <osl.h>
+@@ -3326,20 +3322,12 @@ wchar2ascii(char *abuf, ushort *wbuf, ushort wbuflen, ulong abuflen)
+ /* add:    osl_alloc_skb dev_alloc_skb skb_realloc_headroom dhd_start_xmit */
+ /* remove: osl_pktfree dev_kfree_skb netif_rx */
+ 
+-#if defined(__linux__)
+ #define BCM_OBJDBG_COUNT          (1024 * 100)
+ static spinlock_t dbgobj_lock;
+ #define	BCM_OBJDBG_LOCK_INIT()    spin_lock_init(&dbgobj_lock)
+ #define	BCM_OBJDBG_LOCK_DESTROY()
+ #define	BCM_OBJDBG_LOCK           spin_lock_irqsave
+ #define	BCM_OBJDBG_UNLOCK         spin_unlock_irqrestore
+-#else
+-#define BCM_OBJDBG_COUNT          (256)
+-#define BCM_OBJDBG_LOCK_INIT()
+-#define	BCM_OBJDBG_LOCK_DESTROY()
+-#define BCM_OBJDBG_LOCK(x, y)
+-#define BCM_OBJDBG_UNLOCK(x, y)
+-#endif /* else OS */
+ 
+ #define BCM_OBJDBG_ADDTOHEAD      0
+ #define BCM_OBJDBG_ADDTOTAIL      1
+diff --git a/bcmxtlv.c b/bcmxtlv.c
+index 06a8152..0fd014d 100644
+--- a/bcmxtlv.c
++++ b/bcmxtlv.c
+@@ -24,15 +24,11 @@
+ #include <typedefs.h>
+ #include <bcmdefs.h>
+ 
+-#if defined(CONFIG_BCMDHD) && defined(__linux__)
+ #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))
+ #include <linux/stdarg.h>
+ #else
+ #include <stdarg.h>
+ #endif /* LINUX_VERSION_CODE */
+-#else
+-#include <stdarg.h>
+-#endif /* CONFIG_BCMDHD && __linux__ */
+ 
+ #ifdef BCMDRIVER
+ #include <osl.h>
+diff --git a/dhd.h b/dhd.h
+index 6f36c28..1b88a4c 100644
+--- a/dhd.h
++++ b/dhd.h
+@@ -972,11 +972,7 @@ struct cntry_locales_custom {
+ 	int32 custom_locale_rev;                /* Custom local revisin default -1 */
+ };
+ 
+-#ifdef __linux__
+ extern uint16 dhd_plat_align_rxbuf_size(uint16 rxbufpost_sz);
+-#else
+-static INLINE uint16 dhd_plat_align_rxbuf_size(uint16 rxbufpost_sz) { return rxbufpost_sz; }
+-#endif /* !__linux__ */
+ 
+ #if defined(LINUX) || defined(linux)
+ int dhd_send_msg_to_daemon(struct sk_buff *skb, void *data, int size);
+@@ -1838,9 +1834,6 @@ typedef struct dhd_pub {
+ 	void *plat_info;
+ 	uint32 plat_info_size;
+ 	bool htput_support;
+-#ifdef FLOW_RING_PREALLOC
+-	uint16 non_htput_total_flow_rings;
+-#endif /* FLOW_RING_PREALLOC */
+ 	bool fw_lpm_support; /* fw supports LPM mode */
+ 	bool igmpo_enable; /* fw supports igmp offload */
+ #ifdef DHD_SUPPORT_SPMI_MODE
+@@ -1859,11 +1852,7 @@ typedef struct dhd_pub {
+ 	bool skip_memdump_map_read;
+ } dhd_pub_t;
+ 
+-#if defined(__linux__)
+ int dhd_wifi_platform_set_power(dhd_pub_t *pub, bool on);
+-#else
+-static INLINE int dhd_wifi_platform_set_power(dhd_pub_t *pub, bool on)  { return 0; }
+-#endif /* __linux__ */
+ 
+ #define MAX_WAKE_REASON_STATS	32u
+ typedef struct {
+@@ -4463,18 +4452,10 @@ void dhd_ctrl_tcp_limit_output_bytes(int level);
+ #endif /* LINUX_VERSION_CODE > 4.19.0 && DHD_TCP_LIMIT_OUTPUT */
+ #endif /* linux || LINUX */
+ 
+-#if defined(__linux__)
+ extern void dhd_schedule_delayed_dpc_on_dpc_cpu(dhd_pub_t *dhdp, ulong delay);
+ extern void dhd_handle_pktdata(dhd_pub_t *dhdp, int ifidx, void *pkt, uint8 *pktdata,
+ 	uint32 pktid, uint32 pktlen, uint16 *pktfate, uint8 *dhd_udr, uint8 *dhd_igmp,
+ 	bool tx, int pkt_wake, bool pkt_log);
+-#else
+-static INLINE void dhd_schedule_delayed_dpc_on_dpc_cpu(dhd_pub_t *dhdp, ulong delay)
+-	{ return; }
+-static INLINE void dhd_handle_pktdata(dhd_pub_t *dhdp, int ifidx, void *pkt, uint8 *pktdata,
+-	uint32 pktid, uint32 pktlen, uint16 *pktfate, uint8 *dhd_udr, uint8 *dhd_igmp,
+-	bool tx, int pkt_wake, bool pkt_log) { return; }
+-#endif /* __linux */
+ 
+ #if defined(BCMPCIE) && defined(__linux__)
+ extern int dhd_check_shinfo_nrfrags(dhd_pub_t *dhdp, void *pktbuf, dmaaddr_t *pa, uint32 pktid);
+@@ -4525,7 +4506,6 @@ int dhd_rxf_thread(void *data);
+ void dhd_sched_rxf(dhd_pub_t *dhdp, void *skb);
+ int dhd_os_wake_lock_rx_timeout_enable(dhd_pub_t *pub, int val);
+ 
+-#if defined(__linux__)
+ 
+ #ifdef DHD_SUPPORT_VFS_CALL
+ 
+@@ -4539,8 +4519,10 @@ int dhd_os_wake_lock_rx_timeout_enable(dhd_pub_t *pub, int val);
+ #define DHD_VFS_UNLINK(dir, b, c) vfs_unlink(DHD_VFS_INODE(dir), b)
+ #elif (LINUX_VERSION_CODE < KERNEL_VERSION(5, 12, 0))
+ #define DHD_VFS_UNLINK(dir, b, c) vfs_unlink(DHD_VFS_INODE(dir), b, c)
+-#else
++#elif (LINUX_VERSION_CODE < KERNEL_VERSION(6, 12, 0))
+ #define DHD_VFS_UNLINK(dir, b, c) vfs_unlink(&init_user_ns, DHD_VFS_INODE(dir), b, c)
++#else
++#define DHD_VFS_UNLINK(dir, b, c) vfs_unlink(&nop_mnt_idmap, DHD_VFS_INODE(dir), b, c)
+ #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3, 13, 0) */
+ static INLINE struct file *dhd_filp_open(const char *filename, int flags, int mode)
+ {
+@@ -4626,7 +4608,6 @@ static INLINE int dhd_vfs_stat(char *buf, struct kstat *stat)
+ static INLINE int dhd_kern_path(char *name, int flags, struct path *file_path)
+ 	{ return 0; }
+ #endif /* !DHD_SUPPORT_VFS_CALL */
+-#endif /* __linux__ */
+ #ifdef WL_TWT
+ extern int dhd_config_twt_event_mask_in_suspend(dhd_pub_t *dhdp, bool suspend);
+ extern int dhd_send_twt_info_suspend(dhd_pub_t *dhdp, bool suspend);
+diff --git a/dhd_common.c b/dhd_common.c
+index 2ddac3b..ca620a0 100644
+--- a/dhd_common.c
++++ b/dhd_common.c
+@@ -109,9 +109,7 @@
+ #include <dhd_wlfc.h>
+ #endif
+ 
+-#if defined(__linux__)
+ #include <dhd_linux.h>
+-#endif /* __linux__ */
+ 
+ #ifdef DHD_WMF
+ #include <dhd_wmf_linux.h>
+@@ -5598,10 +5596,8 @@ wl_process_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata, uint pktlen
+ 	uint evlen;
+ 	int ret;
+ 	uint16 usr_subtype;
+-#if defined(__linux__)
+ 	dhd_if_t *ifp = NULL;
+ 	BCM_REFERENCE(ifp);
+-#endif /* DHD_POST_EAPOL_M1_AFTER_ROAM_EVT */
+ 
+ 	ret = wl_host_event_get_data(pktdata, pktlen, &evu);
+ 	if (ret != BCME_OK) {
+@@ -5673,9 +5669,7 @@ wl_process_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata, uint pktlen
+ 	case WLC_E_IF:
+ 		{
+ 		struct wl_event_data_if *ifevent = (struct wl_event_data_if *)event_data;
+-#if defined(__linux__)
+ 		struct net_device *ndev = NULL;
+-#endif /* __linux__ */
+ 
+ 		/* Ignore the event if NOIF is set */
+ 		if (ifevent->reserved & WLC_E_IF_FLAGS_BSSCFG_NOIF) {
+@@ -5721,20 +5715,16 @@ wl_process_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata, uint pktlen
+ 						__FUNCTION__, ifevent->ifidx, event->ifname));
+ 					return (BCME_ERROR);
+ 				}
+-#if defined(__linux__)
+ 				ndev = dhd_idx2net(dhd_pub, ifevent->ifidx);
+ 				if (ndev) {
+ 					dhd_clear_del_in_progress(dhd_pub, ndev);
+ 				}
+-#endif /* __linux__ */
+ 			} else if (ifevent->opcode == WLC_E_IF_DEL) {
+-#if defined(__linux__)
+ 				ndev = dhd_idx2net(dhd_pub, ifevent->ifidx);
+ 				if (ndev) {
+ 					dhd_set_del_in_progress(dhd_pub, ndev);
+ 					netif_tx_disable(ndev);
+ 				}
+-#endif /* __linux__ */
+ #ifdef PCIE_FULL_DONGLE
+ 				dhd_flow_rings_delete(dhd_pub,
+ 					(uint8)dhd_ifname2idx(dhd_pub->info, event->ifname));
+diff --git a/dhd_custom_google.c b/dhd_custom_google.c
+index 38465bc..19ec3c1 100644
+--- a/dhd_custom_google.c
++++ b/dhd_custom_google.c
+@@ -43,9 +43,7 @@
+ #include <dhd_dbg.h>
+ #include <dhd.h>
+ 
+-#if defined(CONFIG_SOC_GOOGLE)
+ #include <linux/exynos-pci-ctrl.h>
+-#endif /* CONFIG_SOC_GOOGLE */
+ 
+ #ifdef DHD_COREDUMP
+ #include <linux/platform_data/sscoredump.h>
+@@ -54,12 +52,8 @@
+ #include <bcmstdlib_s.h>
+ 
+ #define EXYNOS_PCIE_VENDOR_ID 0x144d
+-#if defined(CONFIG_SOC_GOOGLE)
+ #define EXYNOS_PCIE_DEVICE_ID 0xecec
+ #define EXYNOS_PCIE_CH_NUM 0
+-#else
+-#error "Not supported platform"
+-#endif /* CONFIG_SOC_GOOGLE */
+ 
+ #ifdef CONFIG_BROADCOM_WIFI_RESERVED_MEM
+ extern int dhd_init_wlan_mem(void);
+@@ -87,12 +81,10 @@ static uint64 last_affinity_update_time_ns = 0;
+ static bool is_irq_on_big_core = TRUE;
+ 
+ static int pcie_ch_num = EXYNOS_PCIE_CH_NUM;
+-#if defined(CONFIG_SOC_GOOGLE)
+ #define EXYNOS_PCIE_RC_ONOFF
+ extern int exynos_pcie_pm_resume(int);
+ extern void exynos_pcie_pm_suspend(int);
+ extern int exynos_pcie_l1_exit(int ch_num);
+-#endif /* CONFIG_SOC_GOOGLE */
+ 
+ #ifdef EXYNOS_PCIE_DEBUG
+ extern void exynos_pcie_register_dump(int ch_num);
+@@ -938,10 +930,8 @@ dhd_wlan_deinit(void)
+ 
+ void dhd_plat_l1ss_ctrl(bool ctrl)
+ {
+-#if defined(CONFIG_SOC_GOOGLE)
+ 	DHD_CONS_ONLY(("%s: Control L1ss RC side %d \n", __FUNCTION__, ctrl));
+ 	exynos_pcie_rc_l1ss_ctrl(ctrl, PCIE_L1SS_CTRL_WIFI, 1);
+-#endif /* CONFIG_SOC_GOOGLE */
+ 	return;
+ }
+ 
+diff --git a/dhd_custom_gpio.c b/dhd_custom_gpio.c
+index 2fe1afa..e5363ca 100644
+--- a/dhd_custom_gpio.c
++++ b/dhd_custom_gpio.c
+@@ -395,7 +395,7 @@ void get_customized_country_code(void *adapter, char *country_iso_code, wl_count
+ #endif /* CUSTOM_COUNTRY_CODE */
+ 
+ 	if (cloc_ptr) {
+-		strlcpy(cspec->ccode, cloc_ptr->custom_locale, WLC_CNTRY_BUF_SZ);
++		strscpy(cspec->ccode, cloc_ptr->custom_locale, WLC_CNTRY_BUF_SZ);
+ 		cspec->rev = cloc_ptr->custom_locale_rev;
+ 	}
+ 	return;
+diff --git a/dhd_dbg_ring.c b/dhd_dbg_ring.c
+index ddc0477..8d699fa 100644
+--- a/dhd_dbg_ring.c
++++ b/dhd_dbg_ring.c
+@@ -247,7 +247,6 @@ dhd_dbg_ring_push(dhd_dbg_ring_t *ring, dhd_dbg_ring_entry_t *hdr, void *data)
+ 		return BCME_BADARG;
+ 	}
+ 
+-#if defined(__linux__)
+ 	/* Prevents the case of accessing the ring buffer in the HardIRQ context.
+ 	 * If an interrupt arise after holding ring lock, It could try the same lock.
+ 	 * This is to use the ring lock as spin_lock_bh instead of spin_lock_irqsave.
+@@ -255,7 +254,6 @@ dhd_dbg_ring_push(dhd_dbg_ring_t *ring, dhd_dbg_ring_entry_t *hdr, void *data)
+ 	if (in_irq()) {
+ 		return BCME_BUSY;
+ 	}
+-#endif /* defined(__linux__) */
+ 
+ 	DHD_DBG_RING_LOCK(ring->lock, flags);
+ 
+diff --git a/dhd_flowring.h b/dhd_flowring.h
+index 7dab490..0853316 100644
+--- a/dhd_flowring.h
++++ b/dhd_flowring.h
+@@ -66,9 +66,6 @@
+ 	((pub)->htput_support && (flowid >= (pub)->htput_flow_ring_start) && \
+ 	((uint16)flowid < ((pub)->htput_flow_ring_start + HTPUT_TOTAL_FLOW_RINGS)))
+ 
+-#if defined(FLOW_RING_PREALLOC)
+-#define MAX_FLOW_RINGS 40
+-#endif /* FLOW_RING_PREALLOC */
+ 
+ #ifdef DHD_EFI
+ /*
+diff --git a/dhd_linux.c b/dhd_linux.c
+index f9d0b2c..0bff312 100644
+--- a/dhd_linux.c
++++ b/dhd_linux.c
+@@ -15371,7 +15371,8 @@ dhd_os_get_img_fwreq(const struct firmware **fw, char *file_path)
+ 
+ 	ret = request_firmware(fw, file_path, dhd_bus_to_dev(g_dhd_pub->bus));
+ 	if (ret < 0) {
+-		DHD_ERROR(("%s: request_firmware err: %d\n", __FUNCTION__, ret));
++		DHD_ERROR(("%s: request_firmware %s err: %d\n",
++		          __FUNCTION__, file_path, ret));
+ 		/* convert to BCME_NOTFOUND error for error handling */
+ 		ret = BCME_NOTFOUND;
+ 	}
+diff --git a/dhd_linux_platdev.c b/dhd_linux_platdev.c
+index de0d316..6367a81 100644
+--- a/dhd_linux_platdev.c
++++ b/dhd_linux_platdev.c
+@@ -118,9 +118,6 @@ extern bool check_bcm4335_rev(void);
+ #if defined(CONFIG_X86)
+ #define PCIE_RC_VENDOR_ID 0x8086
+ #define PCIE_RC_DEVICE_ID 0x9c1a
+-#elif defined(CONFIG_PCI_TEGRA)
+-#define PCIE_RC_VENDOR_ID 0x14e4
+-#define PCIE_RC_DEVICE_ID 0x4347
+ #else /* CONFIG_PCI_TEGRA */
+ /* Dummy defn */
+ #define PCIE_RC_VENDOR_ID 0xffff
+diff --git a/dhd_msgbuf.c b/dhd_msgbuf.c
+index 8cde8cd..af17323 100644
+--- a/dhd_msgbuf.c
++++ b/dhd_msgbuf.c
+@@ -731,12 +731,6 @@ typedef struct dhd_prot {
+ 	 * when the WRITE index must be synced to consumer's workq
+ 	 */
+ 	dhd_dma_buf_t	fw_trap_buf; /* firmware trap buffer */
+-#ifdef FLOW_RING_PREALLOC
+-	/* pre-allocation htput ring buffer */
+-	dhd_dma_buf_t	htput_ring_buf[HTPUT_TOTAL_FLOW_RINGS];
+-	/* pre-allocation folw ring(non htput rings) */
+-	dhd_dma_buf_t	flow_ring_buf[MAX_FLOW_RINGS];
+-#endif /* FLOW_RING_PREALLOC */
+ 	uint32  host_ipc_version; /* Host sypported IPC rev */
+ 	uint32  device_ipc_version; /* FW supported IPC rev */
+ 	uint32  active_ipc_version; /* Host advertised IPC rev */
+@@ -3619,9 +3613,6 @@ dhd_prot_attach(dhd_pub_t *dhd)
+ 	osl_t *osh = dhd->osh;
+ 	dhd_prot_t *prot;
+ 	uint32 trap_buf_len;
+-#ifdef FLOW_RING_PREALLOC
+-	int i = 0;
+-#endif /* FLOW_RING_PREALLOC */
+ 	/* bus is required in chipid checks and flowring checks, abort, if it is NULL */
+ 	if (dhd->bus == NULL) {
+ 		DHD_ERROR(("%s: Abort as dhd->bus is NULL\n", __FUNCTION__));
+@@ -3715,35 +3706,6 @@ dhd_prot_attach(dhd_pub_t *dhd)
+ 	trap_buf_len = BCMPCIE_EXT_TRAP_DATA_MAXLEN;
+ #endif /* D2H_MINIDUMP */
+ 
+-#ifdef FLOW_RING_PREALLOC
+-	if (dhd->htput_support) {
+-		/* pre-allocation htput ring */
+-		for (i = 0; i < HTPUT_TOTAL_FLOW_RINGS; i++) {
+-			if (dhd_dma_buf_alloc(dhd, &dhd->prot->htput_ring_buf[i],
+-				(uint32)(h2d_htput_max_txpost * H2DRING_TXPOST_ITEMSIZE)))
+-			{
+-				DHD_ERROR(("%s : dhd_prealloc_htput_ring_buffer failed\n",
+-					__FUNCTION__));
+-				goto fail;
+-			}
+-		}
+-	}
+-
+-	if (dhd->htput_support) {
+-		dhd->non_htput_total_flow_rings = MAX_FLOW_RINGS - HTPUT_TOTAL_FLOW_RINGS;
+-	} else {
+-		dhd->non_htput_total_flow_rings = MAX_FLOW_RINGS;
+-	}
+-
+-	/* pre-allocation flow ring */
+-	for (i = 0; i < dhd->non_htput_total_flow_rings; i++) {
+-		if (dhd_dma_buf_alloc(dhd, &dhd->prot->flow_ring_buf[i],
+-			(uint32)(H2DRING_TXPOST_MAX_ITEM * H2DRING_TXPOST_ITEMSIZE))) {
+-			DHD_ERROR(("%s : dhd_prealloc_flowring_buffer failed\n", __FUNCTION__));
+-			goto fail;
+-		}
+-	}
+-#endif /* FLOW_RING_PREALLOC */
+ 
+ 	/* Initialize trap buffer */
+ 	if (dhd_dma_buf_alloc(dhd, &dhd->prot->fw_trap_buf, trap_buf_len)) {
+@@ -4526,9 +4488,6 @@ dhd_prot_init(dhd_pub_t *dhd)
+  */
+ void dhd_prot_detach(dhd_pub_t *dhd)
+ {
+-#ifdef FLOW_RING_PREALLOC
+-	int i = 0;
+-#endif /* FLOW_RING_PREALLOC */
+ 	dhd_prot_t *prot = dhd->prot;
+ 
+ 	/* Stop the protocol module */
+@@ -4572,17 +4531,6 @@ void dhd_prot_detach(dhd_pub_t *dhd)
+ 		/* Detach each DMA-able buffer and free the pool of msgbuf_ring_t */
+ 		dhd_prot_flowrings_pool_detach(dhd);
+ 
+-#ifdef FLOW_RING_PREALLOC
+-		if (dhd->htput_support) {
+-			for (i = 0; i < HTPUT_TOTAL_FLOW_RINGS; i++) {
+-				dhd_dma_buf_free(dhd, &prot->htput_ring_buf[i]);
+-			}
+-		}
+-
+-		for (i = 0; i < dhd->non_htput_total_flow_rings; i++) {
+-			dhd_dma_buf_free(dhd, &prot->flow_ring_buf[i]);
+-		}
+-#endif /* FLOW_RING_PREALLOC */
+ 
+ 		/* detach info rings */
+ 		dhd_prot_detach_info_rings(dhd);
+@@ -4643,9 +4591,6 @@ void dhd_prot_detach(dhd_pub_t *dhd)
+ void
+ dhd_prot_reset(dhd_pub_t *dhd)
+ {
+-#ifdef FLOW_RING_PREALLOC
+-	int i = 0;
+-#endif /* FLOW_RING_PREALLOC */
+ 	struct dhd_prot *prot = dhd->prot;
+ 
+ 	DHD_TRACE(("%s\n", __FUNCTION__));
+@@ -4703,17 +4648,6 @@ dhd_prot_reset(dhd_pub_t *dhd)
+ 	dhd_dma_buf_reset(dhd, &prot->d2h_dma_indx_rd_buf);
+ 	dhd_dma_buf_reset(dhd, &prot->d2h_dma_indx_wr_buf);
+ 
+-#ifdef FLOW_RING_PREALLOC
+-	if (dhd->htput_support) {
+-		for (i = 0; i < HTPUT_TOTAL_FLOW_RINGS; i++) {
+-			dhd_dma_buf_reset(dhd, &prot->htput_ring_buf[i]);
+-		}
+-	}
+-
+-	for (i = 0; i < dhd->non_htput_total_flow_rings; i++) {
+-		dhd_dma_buf_reset(dhd, &prot->flow_ring_buf[i]);
+-	}
+-#endif /* FLOW_RING_PREALLOC */
+ 
+ #ifdef DHD_DMA_INDICES_SEQNUM
+ 		if (prot->d2h_dma_indx_wr_copy_buf) {
+@@ -10942,41 +10876,6 @@ dhd_prot_ring_attach(dhd_pub_t *dhd, msgbuf_ring_t *ring, const char *name,
+ 		} else
+ #endif /* EWP_EDL */
+ 
+-#ifdef FLOW_RING_PREALLOC
+-		if (dhd->htput_support && DHD_IS_FLOWRING(ringid, max_flowrings) &&
+-			DHD_IS_FLOWID_HTPUT(dhd, DHD_RINGID_TO_FLOWID(ringid))) {
+-			int htput_ringid = ringid % HTPUT_TOTAL_FLOW_RINGS;
+-			/* copy pre-allocated mem with ringid */
+-			ret = memcpy_s(&ring->dma_buf, sizeof(ring->dma_buf),
+-				&dhd->prot->htput_ring_buf[htput_ringid],
+-				sizeof(dhd->prot->htput_ring_buf[htput_ringid]));
+-			if (ret != BCME_OK) {
+-				DHD_ERROR(("%s: memcpy_s htput_ring_buf failed\n", __FUNCTION__));
+-				ASSERT(0);
+-				return BCME_ERROR;
+-			}
+-			dma_buf = &ring->dma_buf;
+-			if (dma_buf->va == NULL) {
+-				return BCME_NOMEM;
+-			}
+-		} else if (DHD_IS_FLOWRING(ringid, max_flowrings)) {
+-			int non_htput_ringid = ringid % dhd->non_htput_total_flow_rings;
+-			/* copy pre-allocated mem with ringid : Non-HTPUT ring */
+-			ret = memcpy_s(&ring->dma_buf, sizeof(ring->dma_buf),
+-				&dhd->prot->flow_ring_buf[non_htput_ringid],
+-				sizeof(dhd->prot->flow_ring_buf[non_htput_ringid]));
+-			if (ret != BCME_OK) {
+-				DHD_ERROR(("%s: memcpy_s non_htput_ring_buf failed\n",
+-					__FUNCTION__));
+-				ASSERT(0);
+-				return BCME_ERROR;
+-			}
+-			dma_buf = &ring->dma_buf;
+-			if (dma_buf->va == NULL) {
+-				return BCME_NOMEM;
+-			}
+-		} else
+-#endif /* FLOW_RING_PREALLOC */
+ 		{
+ 			/* Allocate a dhd_dma_buf for non-htput flowrings and static rings */
+ 			dma_buf_alloced = dhd_dma_buf_alloc(dhd, &ring->dma_buf, dma_buf_len);
+@@ -11080,18 +10979,6 @@ dhd_prot_ring_detach(dhd_pub_t *dhd, msgbuf_ring_t *ring)
+ 			memset(&ring->dma_buf, 0, sizeof(ring->dma_buf));
+ 		} else
+ #endif /* EWP_EDL */
+-#ifdef FLOW_RING_PREALLOC
+-		if (dhd->htput_support &&
+-			DHD_IS_FLOWID_HTPUT(dhd, DHD_RINGID_TO_FLOWID(ring->idx)) &&
+-			(ring->dma_buf.va)) {
+-			/* htput ring is freed in dhd_detach */
+-			memset(&ring->dma_buf, 0, sizeof(ring->dma_buf));
+-		} else if (DHD_IS_FLOWRING(ring->idx, max_flowrings) &&
+-			(ring->dma_buf.va)) {
+-			/* flow ring is freed in dhd_detach */
+-			memset(&ring->dma_buf, 0, sizeof(ring->dma_buf));
+-		} else
+-#endif /* FLOW_RING_PREALLOC */
+ 		{
+ 			/* Free non-htput flowrings and static rings */
+ 			dhd_dma_buf_free(dhd, &ring->dma_buf);
+@@ -11167,13 +11054,6 @@ dhd_prot_flowrings_pool_attach(dhd_pub_t *dhd)
+ 		goto fail;
+ 	}
+ 
+-#ifdef FLOW_RING_PREALLOC
+-	if (h2d_flowrings_total > MAX_FLOW_RINGS) {
+-		DHD_ERROR(("%s: requested size %d is bigger than pre-alloc flowrings %d,\n",
+-			__FUNCTION__, h2d_flowrings_total, MAX_FLOW_RINGS));
+-		goto attach_fail;
+-	}
+-#endif /* FLOW_RING_PREALLOC */
+ 
+ 	/* Setup & Attach a DMA-able buffer to each flowring in the flowring pool */
+ 	FOREACH_RING_IN_FLOWRINGS_POOL(prot, ring, flowid, h2d_flowrings_total) {
+diff --git a/dhd_pcie.c b/dhd_pcie.c
+index cc0ff10..cd6600b 100644
+--- a/dhd_pcie.c
++++ b/dhd_pcie.c
+@@ -52,10 +52,8 @@
+ #include <dhd_proto.h>
+ #include <dhd_dbg.h>
+ #include <dhd_debug.h>
+-#if defined(__linux__)
+ #include <dhd_daemon.h>
+ #include <dhd_plat.h>
+-#endif /* __linux__ */
+ #include <dhdioctl.h>
+ #include <sdiovar.h>
+ #include <bcmmsgbuf.h>
+@@ -2918,9 +2916,7 @@ dhdpcie_bus_release(dhd_bus_t *bus)
+ 	uint buscorerev = 0;
+ #endif /* BCMQT */
+ 	osl_t *osh = NULL;
+-#if defined(__linux__)
+ 	int bcmerror = 0;
+-#endif /* __linux__ */
+ 
+ 	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
+ 
+@@ -2971,7 +2967,6 @@ dhdpcie_bus_release(dhd_bus_t *bus)
+ 			 */
+ 			dhd_detach(bus->dhd);
+ 			dhdpcie_bus_release_dongle(bus, osh, dongle_isolation, TRUE);
+-#if defined(__linux__)
+ 			DHD_ERROR(("%s: disable pcie dev\n", __FUNCTION__));
+ 			bcmerror = dhdpcie_bus_disable_device(bus);
+ 			if (bcmerror) {
+@@ -2984,7 +2979,6 @@ dhdpcie_bus_release(dhd_bus_t *bus)
+ 				DHD_ERROR(("%s: dhdpcie_bus_stop_host_dev failed: %d\n",
+ 					__FUNCTION__, bcmerror));
+ 			}
+-#endif /* __linux__ */
+ 			dhd_free(bus->dhd);
+ 			bus->dhd = NULL;
+ 		}
+@@ -5427,9 +5421,7 @@ dhdpcie_mem_dump(dhd_bus_t *bus)
+ 		dhdp->dhd_console_ms = 0;
+ 	}
+ 
+-#if defined(__linux__)
+ 	dhd_plat_pcie_register_dump(dhdp->plat_info);
+-#endif /* __linux__ */
+ 
+ #ifdef SUPPORT_LINKDOWN_RECOVERY
+ 	if (bus->is_linkdown) {
+@@ -17278,9 +17270,7 @@ dhd_pcie_intr_count_dump(dhd_pub_t *dhd)
+ 		dhdpcie_get_oob_irq_status(bus),
+ 		dhdpcie_get_oob_irq_level()));
+ 
+-#if defined(__linux__)
+ 	dhd_plat_pin_dbg_show(bus->dhd->plat_info);
+-#endif /* __linux__ */
+ #endif /* BCMPCIE_OOB_HOST_WAKE */
+ 	DHD_ERROR(("dpc_return_busdown_count=%lu non_ours_irq_count=%lu\n",
+ 		bus->dpc_return_busdown_count, bus->non_ours_irq_count));
+diff --git a/dhd_pcie.h b/dhd_pcie.h
+index f136e6c..58945c8 100644
+--- a/dhd_pcie.h
++++ b/dhd_pcie.h
+@@ -827,10 +827,6 @@ extern void dhd_bus_doorbell_timeout_reset(struct dhd_bus *bus);
+ #define DHD_PCIE_DMA_MASK_FOR_GS101 36
+ #endif /* DHD_SET_PCIE_DMA_MASK_FOR_GS101 */
+ 
+-#ifdef CONFIG_PCI_TEGRA
+-extern int tegra_pcie_pm_suspend(void);
+-extern int tegra_pcie_pm_resume(void);
+-#endif /* CONFIG_PCI_TEGRA */
+ 
+ extern int dhd_buzzz_dump_dngl(dhd_bus_t *bus);
+ #ifdef IDLE_TX_FLOW_MGMT
+diff --git a/dhd_pcie_linux.c b/dhd_pcie_linux.c
+index 2f7f361..fc795c5 100644
+--- a/dhd_pcie_linux.c
++++ b/dhd_pcie_linux.c
+@@ -2187,6 +2187,9 @@ int dhdpcie_init(struct pci_dev *pdev)
+ #endif /* USE_SMMU_ARCH_MSM */
+ 
+ #ifdef DHD_SET_PCIE_DMA_MASK_FOR_GS101
++		DHD_ERROR(("%s: DMA set %d bit mask.\n",
++				__FUNCTION__, DHD_PCIE_DMA_MASK_FOR_GS101));
++
+ 		/* S.SLSI PCIe DMA engine cannot support 64 bit bus address. Hence, set 36 bit */
+ 		if (DHD_DMA_SET_MASK(pdev, DMA_BIT_MASK(DHD_PCIE_DMA_MASK_FOR_GS101)) ||
+ 			DHD_DMA_SET_COHERENT_MASK(pdev,
+@@ -2547,9 +2550,6 @@ dhdpcie_start_host_dev(dhd_bus_t *bus)
+ 		bus->dev, NULL, 0);
+ #endif /* SUPPORT_LINKDOWN_RECOVERY */
+ #endif /* CONFIG_ARCH_MSM */
+-#ifdef CONFIG_PCI_TEGRA
+-	ret = tegra_pcie_pm_resume();
+-#endif /* CONFIG_PCI_TEGRA */
+ 
+ 	if (ret) {
+ 		DHD_ERROR(("%s Failed to bring up PCIe link\n", __FUNCTION__));
+@@ -2597,9 +2597,6 @@ dhdpcie_stop_host_dev(dhd_bus_t *bus)
+ 		bus->dev, NULL, 0);
+ #endif /* SUPPORT_LINKDOWN_RECOVERY */
+ #endif /* CONFIG_ARCH_MSM */
+-#ifdef CONFIG_PCI_TEGRA
+-	ret = tegra_pcie_pm_suspend();
+-#endif /* CONFIG_PCI_TEGRA */
+ 	if (ret) {
+ 		DHD_ERROR(("Failed to stop PCIe link\n"));
+ 		goto done;
+diff --git a/dhd_pktlog.c b/dhd_pktlog.c
+index 9b920ae..3a386e3 100644
+--- a/dhd_pktlog.c
++++ b/dhd_pktlog.c
+@@ -34,6 +34,7 @@
+ #include <dhd_wlfc.h>
+ #include <dhd_debug.h>
+ #include <linux/sched/clock.h>
++#include <linux/slab.h>
+ 
+ #ifdef DHD_COMPACT_PKT_LOG
+ #include <bcmip.h>
+@@ -1103,7 +1104,7 @@ dhd_pktlog_minimize_report(char *pkt, uint32 frame_len,
+ 		return;
+ 	}
+ 
+-	mem_buf = vmalloc(frame_len);
++	mem_buf = kvmalloc(frame_len, GFP_KERNEL);
+ 	if (!mem_buf) {
+ 		DHD_ERROR(("%s : failed to alloc membuf\n", __FUNCTION__));
+ 		return;
+@@ -1124,7 +1125,7 @@ dhd_pktlog_minimize_report(char *pkt, uint32 frame_len,
+ 	if (ret < 0) {
+ 		DHD_ERROR(("%s : Write minimize report\n", __FUNCTION__));
+ 	}
+-	vfree(mem_buf);
++	kvfree(mem_buf);
+ }
+ #endif /* !DHD_PKT_LOGGING_DBGRING */
+ 
+diff --git a/dhd_plat.h b/dhd_plat.h
+index 7753871..7872aa6 100644
+--- a/dhd_plat.h
++++ b/dhd_plat.h
+@@ -26,7 +26,6 @@
+ #ifndef __DHD_PLAT_H__
+ #define __DHD_PLAT_H__
+ 
+-#if defined(__linux__)
+ 
+ #include <linuxver.h>
+ 
+@@ -95,5 +94,4 @@ extern uint32 dhd_plat_get_rc_vendor_id(void);
+ extern uint32 dhd_plat_get_rc_device_id(void);
+ 
+ extern uint16 dhd_plat_align_rxbuf_size(uint16 rxbufpost_sz);
+-#endif /* __linux__ */
+ #endif /* __DHD_PLAT_H__ */
+diff --git a/include/bcmdefs.h b/include/bcmdefs.h
+index 932f367..acbf904 100644
+--- a/include/bcmdefs.h
++++ b/include/bcmdefs.h
+@@ -556,11 +556,7 @@ typedef struct  {
+ 	uint32	  length;
+ } hnddma_seg_t;
+ 
+-#if defined(__linux__)
+ #define MAX_DMA_SEGS 8
+-#else
+-#define MAX_DMA_SEGS 4
+-#endif
+ 
+ typedef struct {
+ 	void *oshdmah; /* Opaque handle for OSL to store its information */
+diff --git a/include/dbus.h b/include/dbus.h
+index 6e36ba2..ca9c8a2 100644
+--- a/include/dbus.h
++++ b/include/dbus.h
+@@ -459,9 +459,6 @@ extern void dbus_release_fw_nvfile(void *firmware);
+  * The code assumes little endian throughout
+  */
+ 
+-#if !defined(__linux__)
+-#error "EHCI fastpath is for Linux only."
+-#endif
+ 
+ #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0))
+ 	/* Backward compatibility */
+diff --git a/include/osl.h b/include/osl.h
+index 098bdd5..1dc9b44 100644
+--- a/include/osl.h
++++ b/include/osl.h
+@@ -36,13 +36,9 @@ enum {
+ #define OSL_PKTTAG_SZ	40 /* Size of PktTag */
+ #elif defined(MACOSX)
+ #define OSL_PKTTAG_SZ	56
+-#elif defined(__linux__)
+-#define OSL_PKTTAG_SZ   48 /* standard linux pkttag size is 48 bytes */
+ #else
+-#ifndef OSL_PKTTAG_SZ
+-#define OSL_PKTTAG_SZ	32 /* Size of PktTag */
+-#endif /* !OSL_PKTTAG_SZ */
+-#endif /* DHD_EFI */
++#define OSL_PKTTAG_SZ   48 /* standard linux pkttag size is 48 bytes */
++#endif
+ 
+ /* Drivers use PKTFREESETCB to register a callback function when a packet is freed by OSL */
+ typedef void (*pktfree_cb_fn_t)(void *ctx, void *pkt, unsigned int status);
+@@ -55,21 +51,10 @@ typedef void  (*osl_wreg_fn_t)(void *ctx, volatile void *reg, unsigned int val,
+ #include <efi_osl.h>
+ #elif defined(WL_UNITTEST)
+ #include <utest_osl.h>
+-#elif defined(__linux__)
++#else
+ #include <linux_osl.h>
+ #include <linux_pkt.h>
+-#elif defined(NDIS)
+-#include <ndis_osl.h>
+-#elif defined(_RTE_)
+-#include <rte_osl.h>
+-#include <hnd_pkt.h>
+-#elif defined(COEX_OSL)
+-#include <coex_osl.h>
+-#elif defined(MACOSX)
+-#include <macosx_osl.h>
+-#else
+-#error "Unsupported OSL requested"
+-#endif /* defined(DOS) */
++#endif
+ 
+ #ifndef PKTDBG_TRACE
+ #define PKTDBG_TRACE(osh, pkt, bit)	BCM_REFERENCE(osh)
+@@ -410,13 +395,6 @@ do { \
+ #define PKTRESETUDR(osh, lb)			BCM_REFERENCE(osh)
+ #endif
+ 
+-#if !defined(__linux__)
+-#define PKTLIST_INIT(x)			BCM_REFERENCE(x)
+-#define PKTLIST_ENQ(x, y)		BCM_REFERENCE(x)
+-#define PKTLIST_DEQ(x)			BCM_REFERENCE(x)
+-#define PKTLIST_UNLINK(x, y)		BCM_REFERENCE(x)
+-#define PKTLIST_FINI(x)			BCM_REFERENCE(x)
+-#endif
+ 
+ #ifndef ROMMABLE_ASSERT
+ #define ROMMABLE_ASSERT(exp) ASSERT(exp)
+diff --git a/wifi_stats.h b/wifi_stats.h
+index e37d550..82bd588 100644
+--- a/wifi_stats.h
++++ b/wifi_stats.h
+@@ -107,11 +107,7 @@ typedef enum {
+ #define WIFI_RSDB_TIMESLICE_DUTY_CYCLE	100
+ #define WIFI_VSDB_TIMESLICE_DUTY_CYCLE	50
+ 
+-#if defined(__linux__)
+ #define PACK_ATTRIBUTE __attribute__ ((packed))
+-#else
+-#define PACK_ATTRIBUTE
+-#endif
+ typedef struct {
+ 	wifi_interface_mode mode;     /* interface mode */
+ 	uint8 mac_addr[6];               /* interface mac address (self) */
+diff --git a/wl_cfg80211.c b/wl_cfg80211.c
+index 379d973..46e106c 100644
+--- a/wl_cfg80211.c
++++ b/wl_cfg80211.c
+@@ -548,7 +548,7 @@ wl_cfg80211_set_tx_power(struct wiphy *wiphy,
+ #endif /* WL_CFG80211_P2P_DEV_IF */
+ #if defined(WL_CFG80211_P2P_DEV_IF)
+ static s32 wl_cfg80211_get_tx_power(struct wiphy *wiphy,
+-	struct wireless_dev *wdev, s32 *dbm);
++	struct wireless_dev *wdev, unsigned int link_id, s32 *dbm);
+ #else
+ static s32 wl_cfg80211_get_tx_power(struct wiphy *wiphy, s32 *dbm);
+ #endif /* WL_CFG80211_P2P_DEV_IF */
+@@ -7370,7 +7370,7 @@ wl_cfg80211_set_tx_power(struct wiphy *wiphy,
+ 
+ #if defined(WL_CFG80211_P2P_DEV_IF)
+ static s32 wl_cfg80211_get_tx_power(struct wiphy *wiphy,
+-	struct wireless_dev *wdev, s32 *dbm)
++	struct wireless_dev *wdev, unsigned int link_id, s32 *dbm)
+ #else
+ static s32 wl_cfg80211_get_tx_power(struct wiphy *wiphy, s32 *dbm)
+ #endif /* WL_CFG80211_P2P_DEV_IF */
+diff --git a/wl_linux_mon.c b/wl_linux_mon.c
+index 641bbc4..06adb04 100644
+--- a/wl_linux_mon.c
++++ b/wl_linux_mon.c
+@@ -38,9 +38,7 @@
+ #include <dngl_stats.h>
+ #include <dhd.h>
+ #endif /* defined(BCMDONGLEHOST) */
+-#if defined(__linux__)
+ #include <bcmstdlib_s.h>
+-#endif /* defined(__linux__) */
+ 
+ typedef enum monitor_states
+ {
+diff --git a/wl_roam.c b/wl_roam.c
+index 00c2f79..570872b 100644
+--- a/wl_roam.c
++++ b/wl_roam.c
+@@ -30,9 +30,7 @@
+ #include <wl_cfg80211.h>
+ #endif
+ #include <wldev_common.h>
+-#if defined(__linux__)
+ #include <bcmstdlib_s.h>
+-#endif /* defined(__linux__) */
+ 
+ #ifdef ESCAN_CHANNEL_CACHE
+ #define MAX_ROAM_CACHE		200
