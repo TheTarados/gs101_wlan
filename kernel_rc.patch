@@ -1103,10 +1103,10 @@ index 000000000..3df0fa058
 +MODULE_LICENSE("GPL v2");
 diff --git a/drivers/pci/controller/dwc/pcie-exynos-rc.c b/drivers/pci/controller/dwc/pcie-exynos-rc.c
 new file mode 100644
-index 000000000..b368164b6
+index 000000000..6227c063e
 --- /dev/null
 +++ b/drivers/pci/controller/dwc/pcie-exynos-rc.c
-@@ -0,0 +1,5054 @@
+@@ -0,0 +1,5053 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
 + * PCIe RC(RootComplex) controller driver for gs101 SoC
@@ -1167,7 +1167,6 @@ index 000000000..b368164b6
 +#include "pcie-exynos-rc.h"
 +
 +#include <linux/dma-map-ops.h>
-+#include <soc/google/s2mpu.h>
 +#include "../../../iommu/exynos-pcie-iommu-exp.h"
 +
 +struct exynos_pcie g_pcie_rc[MAX_RC_NUM];
