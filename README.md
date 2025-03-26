@@ -14,6 +14,7 @@ maintain it if there is a demand for it.
 
 To your config, add 
 ```
+  CONFIG_PCI_EXYNOS=m
   CONFIG_PCI_EXYNOS_CAL_GS101=m
   CONFIG_PCIE_EXYNOS_RC=m
 ```
