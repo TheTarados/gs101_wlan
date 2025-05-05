@@ -1,0 +1,101 @@
+import socket
+import re
+import os
+from fcntl import ioctl
+import sys
+from time import sleep
+from select import select
+
+from sit_lib import *
+
+FALSE_RUN = sys.argv[2]=="0"
+
+
+if not FALSE_RUN:
+    HOST = '127.0.0.1'  # Server address
+    PORT = 65432        # Same port as the server
+
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_socket.connect((HOST, PORT))
+    client_socket.settimeout(10)
+
+with open(sys.argv[1]) as f:
+    for i in f.readlines():
+        op = i.split(':')
+        dir = op[1][5:7]
+        typ = get_data(bytearray.fromhex(op[2]))[0]
+        if FALSE_RUN:
+            print_sit(bytearray.fromhex(op[2]), op[0][:-4]+ op[1][5:7])
+            continue
+
+        if dir=='TX':
+            wval = op[2]
+            wbuf = bytearray.fromhex(wval)
+            if int.from_bytes(wbuf[:2], "little") >= 2:
+                wbuf = b'\xff' + wbuf
+            else:
+                wbuf = b'\x00' + wbuf
+            client_socket.sendall(b'\x00' + wbuf)    
+            print_sit(wbuf[1:], dir)
+            if int.from_bytes(wbuf[:2], "little") < 2:
+                print_sit(client_socket.recv(1000), op[0])
+
+
+wbuf = b'\x00\x00\x0f\x02\x28\x00\x1c\x04\x00\x00\x00\x00\
+\x01\
+\x00\x00\x00\x01\
+\x00\x00\x00\xa4\
+\x00\x00\x00\x00\
+\x00\x00\x00\x04\
+\x00\x00\x00\x02\
+\x00\x00\x00\x02\
+\x00\x3f\x00'
+
+print_sit(wbuf)
+os.write(ipc0_fd, wbuf)
+select([ipc0_fd], [], [ipc0_fd])
+
+print_sit(os.read(ipc0_fd, 1000))
+
+
+wbuf = b'\x00\x00\x00\x01\x0f\x01\xa9\x01\x00\x00\x00\x00\
+\x00\x08\x07\x91\x23\x94\x05\x20\x35\xf0\x00\x00\x00\x00\
+\x11\x01\x00\x0b\x91\x23\x74\x11\x97\x16\xf0\x00\x00\
+\x04\xf4\xf2\x9C\x0e\x00\x00\x00\x00\x00\x00\
+\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
+\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
+\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
+\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
+\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
+\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
+\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
+\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
+\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
+\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
+\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
+\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
+\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+print_sit(wbuf)
+os.write(ipc0_fd, wbuf)
+select([ipc0_fd], [], [ipc0_fd])
+
+print_sit(os.read(ipc0_fd, 1000))
+
+os.close(ipc0_fd)
+
+#---------------------------------------------------------------------------
+# 
+enum_modem_state = [
+    'STATE_OFFLINE',
+    'STATE_CRASH_RESET',
+    'STATE_CRASH_EXIT',
+    'STATE_BOOTING',
+    'STATE_ONLINE',
+    'STATE_NV_REBUILDING',
+    'STATE_LOADER_DONE',
+    'STATE_SIM_ATTACH',
+    'STATE_SIM_DETACH',
+    'STATE_CRASH_WATCHDOG',
+]
+
+sys.stdout.flush()

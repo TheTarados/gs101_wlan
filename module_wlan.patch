@@ -1111,7 +1111,7 @@ index e37d550..82bd588 100644
  	wifi_interface_mode mode;     /* interface mode */
  	uint8 mac_addr[6];               /* interface mac address (self) */
 diff --git a/wl_cfg80211.c b/wl_cfg80211.c
-index 379d973..46e106c 100644
+index 379d973..2ea9ca9 100644
 --- a/wl_cfg80211.c
 +++ b/wl_cfg80211.c
 @@ -548,7 +548,7 @@ wl_cfg80211_set_tx_power(struct wiphy *wiphy,
@@ -1119,7 +1119,7 @@ index 379d973..46e106c 100644
  #if defined(WL_CFG80211_P2P_DEV_IF)
  static s32 wl_cfg80211_get_tx_power(struct wiphy *wiphy,
 -	struct wireless_dev *wdev, s32 *dbm);
-+	struct wireless_dev *wdev, unsigned int link_id, s32 *dbm);
++	struct wireless_dev *wdev, unsigned int useless, s32 *dbm);
  #else
  static s32 wl_cfg80211_get_tx_power(struct wiphy *wiphy, s32 *dbm);
  #endif /* WL_CFG80211_P2P_DEV_IF */
@@ -1128,7 +1128,7 @@ index 379d973..46e106c 100644
  #if defined(WL_CFG80211_P2P_DEV_IF)
  static s32 wl_cfg80211_get_tx_power(struct wiphy *wiphy,
 -	struct wireless_dev *wdev, s32 *dbm)
-+	struct wireless_dev *wdev, unsigned int link_id, s32 *dbm)
++	struct wireless_dev *wdev, unsigned int useless, s32 *dbm)
  #else
  static s32 wl_cfg80211_get_tx_power(struct wiphy *wiphy, s32 *dbm)
  #endif /* WL_CFG80211_P2P_DEV_IF */

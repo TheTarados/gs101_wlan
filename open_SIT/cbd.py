@@ -1,0 +1,49 @@
+import re
+import os
+from fcntl import ioctl
+import sys
+from time import sleep
+
+boot0_path = '/dev/umts_boot0'
+boot0_fd = os.open(boot0_path, os.O_RDWR)
+
+ioctl(boot0_fd, 0x6f57, b'\x01\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x03\x00\x00\x00\x06\x00\x00\x00\x00\x00\x00\x00\x4d\x54\x16\x68\x33\x35\x37\x34\x33\x39\x35\x31\x33\x39\x33\x35\x35\x34\x33\x00\x33\x35\x37\x34\x33\x39\x35\x31\x33\x39\x33\x35\x35\x35\x30\x00\x39\x32\x33\x31\x39\x65\x33\x32\x66\x61\x36\x66\x38\x66\x32\x62\x63\x66\x34\x33\x66\x64\x66\x36\x32\x32\x37\x37\x34\x62\x64\x37\x31\x37\x64\x30\x35\x36\x37\x66\x37\x33\x31\x37\x62\x66\x30\x65\x64\x36\x32\x36\x65\x32\x38\x32\x32\x31\x35\x65\x35\x62\x34\x65')
+ioctl(boot0_fd, 0x40046f21, b'\x00\x00\x00\x00')
+ioctl(boot0_fd, 0x6f19)
+ioctl(boot0_fd, 0x40046f22, b'\x00\x00\x00\x00')
+
+with open("./strace_cbd.log") as f:
+    for i in f.readlines():
+        op = re.split('\(|,|\)| ', i)
+        op = list(filter(None, op))
+        match op[0]:
+            case "write":
+                wval = op[2].replace("\\x", "").replace("\"","").strip()
+                wbuf = bytearray.fromhex(wval)
+                os.write(boot0_fd, wbuf)
+            case "read":
+                vals = os.read(boot0_fd, int(op[3], 16))
+                print(f"{vals} should be {op[2]}")
+            case "ioctl":
+                continue
+                print(op)
+                if op[5]=="0x40" or op[5]=="0x57":
+                    continue
+                if op[2] == "VIDEO_SELECT_SOURCE":
+                    continue
+                    ioctl(boot0_fd, 0x6f25)
+                instr = 0
+                if op[3] == "_IOC_WRITE":
+                    instr = 0x40000000
+                instr |= int(op[6], 16) << 16
+                instr |= int(op[4], 16) << 8
+                instr |= int(op[5], 16)
+                print(hex(instr))
+                ioctl(boot0_fd, instr)
+            case _:
+                print(f"{op[0]} not supported")
+ioctl(boot0_fd, 0x6f23)
+
+
+os.close(boot0_fd)
+
