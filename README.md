@@ -18,7 +18,7 @@ To `src/pixelscripts/gs101_config.fragment`, add
 ```
 CONFIG_PCI_EXYNOS=m
 CONFIG_PCI_EXYNOS_CAL_GS101=m
-CONFIG_PCIE_EXYNOS_RC=m
+CONFIG_PCI_EXYNOS_GS=m
 ```
 ## Basic cellular modem access
 To `src/pixelscripts/gs101_config.fragment`, add 
@@ -39,7 +39,7 @@ CONFIG_EXYNOS_DIT_VERSION=0x02010000
 CONFIG_CH_EXTENSION=m
 CONFIG_CPIF_PAGE_RECYCLING=m
 ```
-Add `python` to `conf/local.conf` in the yocto environment. Build the yocto
+Add `python3` to `IMAGE_INSTAL:append` in `conf/local.conf` in the yocto environment. Build the yocto
 rootfs, flash it. Build the linux kernel, flash it. You can then boot the phone.
 
 From this repo,
@@ -65,11 +65,11 @@ If everything works correctly, you should see answers from the eSIM.
 
 Note: if you have dhcpcd running, it will hang the phone as soon as cbd.py
 finishes. This is probably because it tries to access the non-working net
-interfaces. If you added 
+interfaces. If you added it to your yocto build, make sure to disable it.
 
 ## Making WiFi work
 
-Add `iw` to `conf/local.conf` in the yocto environment (not obligatory but will
+Add `iw` to `IMAGE_INSTAL:append` in `conf/local.conf` in the yocto environment (not obligatory but will
 be useful to test wifi). Build the yocto rootfs, flash it. Build the linux
 kernel, flash it. You can then boot the phone. Next, do the following commands,
 replacing the paths between parenthesis.
