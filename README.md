@@ -63,6 +63,14 @@ python3 client_sim.py
 
 If everything works correctly, you should see answers from the eSIM.
 
+Note: cbd.py flashes firmware. This firmware was extracted with
+```
+strace -s 9999999 -xx -o /sdcard/modem_firmware -e trace=read,write /vendor/bin/cbd -t s5100sit -P by-name/modem -s 2
+```
+in a userdebug android without any modification to the kernel necessary. Note
+that differences in the firmware exist depending on the version of android
+flashed to the phone.
+
 Note: if you have dhcpcd running, it will hang the phone as soon as cbd.py
 finishes. This is probably because it tries to access the non-working net
 interfaces. If you added it to your yocto build, make sure to disable it.
