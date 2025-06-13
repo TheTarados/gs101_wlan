@@ -57,7 +57,7 @@ python3 server.py
 In the second, run
 ```
 cd open_SIT
-python3 cbd.py
+python3 cbd.py strace_cbd.z
 python3 client_sim.py
 ```
 

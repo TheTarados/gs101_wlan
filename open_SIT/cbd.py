@@ -3,6 +3,8 @@ import os
 from fcntl import ioctl
 import sys
 from time import sleep
+import zlib
+import pickle
 
 boot0_path = '/dev/umts_boot0'
 boot0_fd = os.open(boot0_path, os.O_RDWR)
@@ -17,36 +19,14 @@ ioctl(boot0_fd, 0x6f57, b'\x01\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x01\x
 ioctl(boot0_fd, 0x40046f21, b'\x00\x00\x00\x00')
 ioctl(boot0_fd, 0x6f19)
 ioctl(boot0_fd, 0x40046f22, b'\x00\x00\x00\x00')
-with open(sys.argv[1]) as f:
-    for i in f.readlines():
-        op = re.split('\(|,|\)| ', i)
-        op = list(filter(None, op))
-        match op[0]:
-            case "write":
-                wval = op[2].replace("\\x", "").replace("\"","").strip()
-                wbuf = bytearray.fromhex(wval)
-                os.write(boot0_fd, wbuf)
-            case "read":
-                vals = os.read(boot0_fd, int(op[3], 16))
-                print(f"{vals} should be {op[2]}")
-            case "ioctl":
-                continue
-                print(op)
-                if op[5]=="0x40" or op[5]=="0x57":
-                    continue
-                if op[2] == "VIDEO_SELECT_SOURCE":
-                    continue
-                    ioctl(boot0_fd, 0x6f25)
-                instr = 0
-                if op[3] == "_IOC_WRITE":
-                    instr = 0x40000000
-                instr |= int(op[6], 16) << 16
-                instr |= int(op[4], 16) << 8
-                instr |= int(op[5], 16)
-                print(hex(instr))
-                ioctl(boot0_fd, instr)
-            case _:
-                print(f"{op[0]} not supported")
+
+with open(sys.argv[1], 'rb') as f:
+    compressed_data = f.read()
+    decompressed_data = zlib.decompress(compressed_data)
+    loaded_array = pickle.loads(decompressed_data)
+    for i in loaded_array:
+        os.write(boot0_fd, i)
+        vals = os.read(boot0_fd, 999999)
 ioctl(boot0_fd, 0x6f23)
 
 
